@@ -36,6 +36,10 @@ def run_migrations(engine):
         "ALTER TABLE movement_log ALTER COLUMN from_location_label TYPE VARCHAR(30)",
         "ALTER TABLE movement_log ALTER COLUMN to_location_label TYPE VARCHAR(30)",
         "ALTER TABLE locations ALTER COLUMN row TYPE VARCHAR(10)",
+        # fix zone: set container สำหรับ row ที่ขึ้นต้น CON
+        "UPDATE locations SET zone = 'container' WHERE row LIKE 'CON%' AND (zone IS NULL OR zone = 'tent')",
+        # fix zone: set tent สำหรับ row ที่ไม่ใช่ CON แต่ zone เป็น null
+        "UPDATE locations SET zone = 'tent' WHERE row NOT LIKE 'CON%' AND zone IS NULL",
     ]
     with engine.connect() as conn:
         for sql in migrations:
