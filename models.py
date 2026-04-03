@@ -42,6 +42,8 @@ class ItemCreate(BaseModel):
     qty: int = 1
     unit: Optional[str] = None
     note: Optional[str] = None
+    actor_name: Optional[str] = None     # ชื่อ Line ของคนเพิ่ม
+    actor_user_id: Optional[str] = None  # Line user_id ของคนเพิ่ม
 
 class ItemOut(BaseModel):
     id: int

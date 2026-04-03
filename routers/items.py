@@ -11,9 +11,35 @@ async def add_item(data: ItemCreate):
     pallet = await database.fetch_one(pallets.select().where(pallets.c.id == data.pallet_id))
     if not pallet:
         raise HTTPException(status_code=404, detail="ไม่พบพาเลทนี้")
-    query = items.insert().values(**data.model_dump())
-    new_id = await database.execute(query)
+
+    loc = await database.fetch_one(locations.select().where(locations.c.id == pallet["location_id"]))
+
+    # บันทึกเฉพาะ fields ที่เป็นของ items table
+    insert_data = {
+        "pallet_id": data.pallet_id,
+        "item_code": data.item_code,
+        "item_name": data.item_name,
+        "qty": data.qty,
+        "unit": data.unit,
+        "note": data.note,
+    }
+    new_id = await database.execute(items.insert().values(**insert_data))
     row = await database.fetch_one(items.select().where(items.c.id == new_id))
+
+    # บันทึก log ว่าใครเพิ่ม
+    await database.execute(
+        movement_log.insert().values(
+            item_id=new_id,
+            from_pallet_id=None,
+            to_pallet_id=pallet["id"],
+            from_location_label=None,
+            to_location_label=loc["label"] if loc else "-",
+            action="add",
+            qty_changed=data.qty,
+            moved_by=data.actor_name,
+            actor_user_id=data.actor_user_id,
+        )
+    )
     return row
 
 
