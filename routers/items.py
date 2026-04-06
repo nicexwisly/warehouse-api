@@ -14,7 +14,6 @@ async def add_item(data: ItemCreate):
 
     loc = await database.fetch_one(locations.select().where(locations.c.id == pallet["location_id"]))
 
-    # บันทึกเฉพาะ fields ที่เป็นของ items table
     insert_data = {
         "pallet_id": data.pallet_id,
         "item_code": data.item_code,
@@ -26,7 +25,6 @@ async def add_item(data: ItemCreate):
     new_id = await database.execute(items.insert().values(**insert_data))
     row = await database.fetch_one(items.select().where(items.c.id == new_id))
 
-    # บันทึก log ว่าใครเพิ่ม
     await database.execute(
         movement_log.insert().values(
             item_id=new_id,
@@ -95,7 +93,6 @@ async def deduct_item(item_id: int, data: ItemDeduct):
 
     new_qty = item["qty"] - data.qty
 
-    # บันทึก log
     await database.execute(
         movement_log.insert().values(
             item_id=item_id,
@@ -110,13 +107,15 @@ async def deduct_item(item_id: int, data: ItemDeduct):
         )
     )
 
-    # ตัดสต็อก — ถ้าเหลือ 0 ให้ลบ item ออก
+    # ตัดสต็อกอย่างเดียว ไม่ลบ item ออกจากระบบ
+    await database.execute(
+        items.update().where(items.c.id == item_id).values(qty=new_qty)
+    )
+
     if new_qty == 0:
-        await database.execute(items.delete().where(items.c.id == item_id))
-        return {"message": f"หยิบ '{item['item_name']}' ออกครบ ลบออกจากระบบแล้ว", "remaining": 0}
-    else:
-        await database.execute(items.update().where(items.c.id == item_id).values(qty=new_qty))
-        return {"message": f"หยิบ '{item['item_name']}' {data.qty} {item['unit'] or 'ชิ้น'} แล้ว", "remaining": new_qty}
+        return {"message": f"หยิบ '{item['item_name']}' ออกครบแล้ว", "remaining": 0}
+
+    return {"message": f"หยิบ '{item['item_name']}' {data.qty} {item['unit'] or 'ชิ้น'} แล้ว", "remaining": new_qty}
 
 
 @router.patch("/{item_id}/move")
