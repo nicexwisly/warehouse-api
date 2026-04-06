@@ -49,9 +49,9 @@ async def get_all_locations():
 async def get_map(zone: str = Query("tent", description="tent | container | all")):
     """
     ดู map ตาม zone
-    - zone=tent     → เต้นท์ (default)
+    - zone=tent      → เต้นท์ (default)
     - zone=container → ตู้คอนเทนเนอร์ทั้ง 3 ตู้
-    - zone=all      → ทั้งหมด
+    - zone=all       → ทั้งหมด
     """
     if zone == "all":
         rows = await database.fetch_all(
@@ -82,7 +82,12 @@ async def get_map(zone: str = Query("tent", description="tent | container | all"
         count_query = (
             sqlalchemy.select(sqlalchemy.func.count(items.c.id))
             .select_from(items.join(pallets, items.c.pallet_id == pallets.c.id))
-            .where(pallets.c.location_id == loc["id"])
+            .where(
+                sqlalchemy.and_(
+                    pallets.c.location_id == loc["id"],
+                    items.c.qty > 0,
+                )
+            )
         )
         item_count = await database.fetch_val(count_query)
 

@@ -47,7 +47,12 @@ async def get_pallet_detail(pallet_id: int):
     )
 
     item_list = await database.fetch_all(
-        items.select().where(items.c.pallet_id == pallet_id)
+        items.select().where(
+            sqlalchemy.and_(
+                items.c.pallet_id == pallet_id,
+                items.c.qty > 0,
+            )
+        )
     )
 
     return {
