@@ -14,6 +14,7 @@ async def add_item(data: ItemCreate):
 
     loc = await database.fetch_one(locations.select().where(locations.c.id == pallet["location_id"]))
 
+    # บันทึกเฉพาะ fields ที่เป็นของ items table
     insert_data = {
         "pallet_id": data.pallet_id,
         "item_code": data.item_code,
@@ -25,6 +26,7 @@ async def add_item(data: ItemCreate):
     new_id = await database.execute(items.insert().values(**insert_data))
     row = await database.fetch_one(items.select().where(items.c.id == new_id))
 
+    # บันทึก log ว่าใครเพิ่ม
     await database.execute(
         movement_log.insert().values(
             item_id=new_id,
@@ -59,9 +61,12 @@ async def search_items(q: str = Query(..., min_length=1)):
             .join(locations, pallets.c.location_id == locations.c.id)
         )
         .where(
-            sqlalchemy.or_(
-                items.c.item_name.ilike(f"%{q}%"),
-                items.c.item_code.ilike(f"%{q}%"),
+            sqlalchemy.and_(
+                items.c.qty > 0,
+                sqlalchemy.or_(
+                    items.c.item_name.ilike(f"%{q}%"),
+                    items.c.item_code.ilike(f"%{q}%"),
+                ),
             )
         )
         .order_by(locations.c.label)
@@ -93,6 +98,7 @@ async def deduct_item(item_id: int, data: ItemDeduct):
 
     new_qty = item["qty"] - data.qty
 
+    # บันทึก log
     await database.execute(
         movement_log.insert().values(
             item_id=item_id,
@@ -108,14 +114,12 @@ async def deduct_item(item_id: int, data: ItemDeduct):
     )
 
     # ตัดสต็อกอย่างเดียว ไม่ลบ item ออกจากระบบ
-    await database.execute(
-        items.update().where(items.c.id == item_id).values(qty=new_qty)
-    )
+    await database.execute(items.update().where(items.c.id == item_id).values(qty=new_qty))
 
     if new_qty == 0:
         return {"message": f"หยิบ '{item['item_name']}' ออกครบแล้ว", "remaining": 0}
-
-    return {"message": f"หยิบ '{item['item_name']}' {data.qty} {item['unit'] or 'ชิ้น'} แล้ว", "remaining": new_qty}
+    else:
+        return {"message": f"หยิบ '{item['item_name']}' {data.qty} {item['unit'] or 'ชิ้น'} แล้ว", "remaining": new_qty}
 
 
 @router.patch("/{item_id}/move")
