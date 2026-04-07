@@ -1,6 +1,7 @@
 import databases
 import sqlalchemy
 from pydantic_settings import BaseSettings
+from sqlalchemy import text
 
 
 class Settings(BaseSettings):
@@ -15,6 +16,8 @@ settings = Settings()
 database = databases.Database(settings.DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
+UTC_NOW = text("TIMEZONE('utc', CURRENT_TIMESTAMP)")
+
 locations = sqlalchemy.Table(
     "locations",
     metadata,
@@ -25,7 +28,7 @@ locations = sqlalchemy.Table(
     sqlalchemy.Column("label", sqlalchemy.String(30), unique=True),
     sqlalchemy.Column("zone", sqlalchemy.String(20), nullable=False, server_default="tent"),
     sqlalchemy.Column("container_no", sqlalchemy.Integer, nullable=True),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False, server_default=UTC_NOW),
 )
 
 pallets = sqlalchemy.Table(
@@ -35,7 +38,7 @@ pallets = sqlalchemy.Table(
     sqlalchemy.Column("location_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("locations.id"), nullable=False),
     sqlalchemy.Column("pallet_code", sqlalchemy.String(50), unique=True, nullable=False),
     sqlalchemy.Column("note", sqlalchemy.Text, nullable=True),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False, server_default=UTC_NOW),
 )
 
 items = sqlalchemy.Table(
@@ -48,8 +51,8 @@ items = sqlalchemy.Table(
     sqlalchemy.Column("qty", sqlalchemy.Integer, default=1),
     sqlalchemy.Column("unit", sqlalchemy.String(50), nullable=True),
     sqlalchemy.Column("note", sqlalchemy.Text, nullable=True),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
-    sqlalchemy.Column("updated_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now(), onupdate=sqlalchemy.func.now()),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime(timezone=True), nullable=False, server_default=UTC_NOW),
+    sqlalchemy.Column("updated_at", sqlalchemy.DateTime(timezone=True), nullable=False, server_default=UTC_NOW, onupdate=sqlalchemy.func.now()),
 )
 
 movement_log = sqlalchemy.Table(
@@ -65,7 +68,7 @@ movement_log = sqlalchemy.Table(
     sqlalchemy.Column("qty_changed", sqlalchemy.Integer, nullable=True),
     sqlalchemy.Column("moved_by", sqlalchemy.String(100), nullable=True),
     sqlalchemy.Column("actor_user_id", sqlalchemy.String(100), nullable=True),
-    sqlalchemy.Column("moved_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("moved_at", sqlalchemy.DateTime(timezone=True), nullable=False, server_default=UTC_NOW),
 )
 
 

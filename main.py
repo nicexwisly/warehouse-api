@@ -29,7 +29,6 @@ else:
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
-
     )
 
 app.include_router(locations.router)
@@ -50,10 +49,19 @@ def run_migrations(engine):
         "ALTER TABLE movement_log ALTER COLUMN from_location_label TYPE VARCHAR(30)",
         "ALTER TABLE movement_log ALTER COLUMN to_location_label TYPE VARCHAR(30)",
         "ALTER TABLE locations ALTER COLUMN row TYPE VARCHAR(10)",
-        # fix zone: set container สำหรับ row ที่ขึ้นต้น CON
         "UPDATE locations SET zone = 'container' WHERE row LIKE 'CON%' AND (zone IS NULL OR zone = 'tent')",
-        # fix zone: set tent สำหรับ row ที่ไม่ใช่ CON แต่ zone เป็น null
         "UPDATE locations SET zone = 'tent' WHERE row NOT LIKE 'CON%' AND zone IS NULL",
+        # make timestamp columns timezone-aware going forward
+        "ALTER TABLE locations ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'",
+        "ALTER TABLE pallets ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'",
+        "ALTER TABLE items ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'",
+        "ALTER TABLE items ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC'",
+        "ALTER TABLE movement_log ALTER COLUMN moved_at TYPE TIMESTAMPTZ USING moved_at AT TIME ZONE 'UTC'",
+        "ALTER TABLE locations ALTER COLUMN created_at SET DEFAULT TIMEZONE('utc', CURRENT_TIMESTAMP)",
+        "ALTER TABLE pallets ALTER COLUMN created_at SET DEFAULT TIMEZONE('utc', CURRENT_TIMESTAMP)",
+        "ALTER TABLE items ALTER COLUMN created_at SET DEFAULT TIMEZONE('utc', CURRENT_TIMESTAMP)",
+        "ALTER TABLE items ALTER COLUMN updated_at SET DEFAULT TIMEZONE('utc', CURRENT_TIMESTAMP)",
+        "ALTER TABLE movement_log ALTER COLUMN moved_at SET DEFAULT TIMEZONE('utc', CURRENT_TIMESTAMP)",
     ]
     with engine.connect() as conn:
         for sql in migrations:
